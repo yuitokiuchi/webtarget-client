@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || '';
-const loginUri = import.meta.env.VITE_GSI_LOGIN_URI || ''; // 追加: ITP対策用（任意）
+const loginUri = import.meta.env.VITE_GSI_LOGIN_URI || '';
+
+// StrictModeや再マウントでも生存するガード（自動サインインはページライフで一度）:
+let autoLoginAttemptedGlobal = false;
+// FedCMの並列実行防止（StrictMode再マウント対策も兼ねる）
+let fedcmInFlightGlobal = false;
 
 // You can optionally surface your CSP nonce via <meta name="csp-nonce" content="...">
 const getCspNonce = (): string | undefined => {
@@ -22,7 +27,6 @@ interface FedCMCredential {
   token: string; // Typically an ID token from the IdP for OIDC scenarios
 }
 
-// Minimal PromptMomentNotification to avoid depending on the global `google` namespace types
 type PromptMomentNotification = {
   isDisplayed: () => boolean;
   isNotDisplayed: () => boolean;
@@ -43,10 +47,8 @@ declare global {
             callback: (response: CredentialResponse) => void;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
-            // Migration-related options
             use_fedcm_for_prompt?: boolean;
             itp_support?: boolean;
-            // ITP/FedCM補助。存在すれば指定可能。
             login_uri?: string;
           }) => void;
           prompt: (cb?: (notification: PromptMomentNotification) => void) => void;
@@ -162,11 +164,17 @@ export const useGoogleAuth = () => {
     };
   }, []);
 
-  // Auto-login attempt once (FedCM first, then One Tap)
+  // Auto-login once per page life. FedCMが使える場合は「passive」のみを試し、失敗しても自動でOne Tapは起動しない。
   useEffect(() => {
     if (!isGoogleScriptLoaded || token || isFedCMAuthenticating || hasAttemptedAutoLogin) return;
 
-    setHasAttemptedAutoLogin(true); // guard re-entrancy early
+    // StrictMode対策: モジュールスコープのガードで二重起動を封じる
+    if (autoLoginAttemptedGlobal) {
+      setHasAttemptedAutoLogin(true);
+      return;
+    }
+    autoLoginAttemptedGlobal = true;
+    setHasAttemptedAutoLogin(true);
 
     const fedCM = isFedCMSupported();
     const oneTap = isOneTapSupported();
@@ -174,26 +182,20 @@ export const useGoogleAuth = () => {
     setIsFedCMAvailable(fedCM);
     setIsOneTapAvailable(oneTap);
 
-    const tryOneTap = () => {
-      if (!isOneTapSupported() || promptedOnceRef.current) return;
-      initializeGoogleOneTap();
-      promptedOnceRef.current = true;
-      // Avoid relying on moment statuses for control flow (FedCM migration)
-      window.google!.accounts.id.prompt();
-    };
-
     (async () => {
       if (fedCM) {
         try {
-          await authenticateWithFedCM('passive'); // silent
-          if (!token && oneTap) tryOneTap();
+          await authenticateWithFedCM('passive'); // UIなしで取得できるなら取る
         } catch {
-          if (oneTap) tryOneTap();
+          // ここではUIを自動で出さない。ユーザー操作でFedCM active or One Tap or PKCEへ。
         }
-      } else if (oneTap) {
-        tryOneTap();
       } else {
-        setError('No supported Google sign-in method. Use OAuth with PKCE.');
+        // FedCM不可の環境のみ、自動One Tapを試す（ユーザーに見せてもOKなポリシーなら）
+        if (oneTap && !promptedOnceRef.current) {
+          initializeGoogleOneTap();
+          promptedOnceRef.current = true;
+          window.google!.accounts.id.prompt();
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,7 +225,7 @@ export const useGoogleAuth = () => {
       callback: handleGISCallback,
       auto_select: true,
       cancel_on_tap_outside: false,
-      use_fedcm_for_prompt: true,
+      use_fedcm_for_prompt: true, // ただしFedCM対応ブラウザでは自動promptしない運用にしたので重複しない
       itp_support: true,
       ...(loginUri ? { login_uri: loginUri } : {}),
     });
@@ -247,15 +249,23 @@ export const useGoogleAuth = () => {
         if (reason) console.debug('[GSI] One Tap dismissed:', reason);
       }
     } catch {
-      // Intentionally empty: diagnostics only
+      // ignore
     }
   };
 
   // FedCM sign-in
   const authenticateWithFedCM = async (mode: 'passive' | 'active' = 'passive') => {
-    if (isFedCMAuthenticating || !isFedCMSupported()) {
-      throw new Error('FedCM not available or already authenticating');
+    if (!isFedCMSupported()) {
+      throw new Error('FedCM not available');
     }
+    // 並列実行をグローバルに防止（StrictMode再マウント時の競合も回避）
+    if (fedcmInFlightGlobal) {
+      throw new Error('FedCM already in flight');
+    }
+    fedcmInFlightGlobal = true;
+
+    // One Tapが表示されている可能性を潰してからFedCMへ（UI重複防止）
+    window.google?.accounts?.id?.cancel?.();
 
     setIsFedCMAuthenticating(true);
     const controller = new AbortController();
@@ -297,6 +307,7 @@ export const useGoogleAuth = () => {
     } finally {
       setIsFedCMAuthenticating(false);
       fedcmAbortRef.current = null;
+      fedcmInFlightGlobal = false;
     }
   };
 
@@ -344,12 +355,15 @@ export const useGoogleAuth = () => {
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   };
 
-  // Expose: manual triggers
+  // Manual triggers
   const signInWithOneTap = () => {
     if (!isOneTapSupported()) {
       setError('One Tap not available');
       return;
     }
+    // One Tapを起動するときはFedCMを走らせない（UI競合防止）
+    if (fedcmInFlightGlobal || isFedCMAuthenticating) return;
+
     initializeGoogleOneTap();
     if (!promptedOnceRef.current) {
       promptedOnceRef.current = true;
@@ -365,7 +379,6 @@ export const useGoogleAuth = () => {
     authenticateWithFedCM(mode).catch(() => {});
   };
 
-  // New: render a visible Google button for click-initiated sign-in
   const renderGoogleButton = (container: HTMLElement, options: Record<string, unknown> = {}) => {
     if (!window.google?.accounts?.id) return;
     initializeGoogleOneTap();
@@ -395,6 +408,6 @@ export const useGoogleAuth = () => {
     signInWithFedCM,
     startOAuthPkce,
     signInWithOAuth,
-    renderGoogleButton, // ← 追加
+    renderGoogleButton,
   };
 };
