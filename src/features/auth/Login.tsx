@@ -8,6 +8,8 @@ const Login = () => {
     isFedCMAvailable,
     isOneTapAvailable,
     isGoogleScriptLoaded,
+    isFedCMAuthenticating,
+    isOneTapAuthenticating,
     hasAttemptedAutoLogin,
     signInWithOneTap,
     startOAuthPkce,
@@ -141,7 +143,7 @@ const Login = () => {
           )}
 
           {/* Loading State */}
-          {isExchanging && (
+          {(isFedCMAuthenticating || isOneTapAuthenticating || isExchanging) && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <div className="flex items-center">
                 <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -149,7 +151,11 @@ const Login = () => {
                   <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 <span className="text-sm text-blue-700">
-                  Exchanging token...
+                  {isFedCMAuthenticating 
+                    ? 'Signing in with FedCM...' 
+                    : isOneTapAuthenticating 
+                    ? 'Signing in with One Tap...' 
+                    : 'Exchanging token...'}
                 </span>
               </div>
             </div>
@@ -159,7 +165,7 @@ const Login = () => {
           <div className="space-y-4">
             <button
               onClick={signInWithGoogle}
-              disabled={isExchanging}
+              disabled={isFedCMAuthenticating || isOneTapAuthenticating || isExchanging}
               className="w-full flex justify-center items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">

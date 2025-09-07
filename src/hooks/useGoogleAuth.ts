@@ -140,6 +140,7 @@ export const useGoogleAuth = () => {
   const [isGoogleScriptLoaded, setIsGoogleScriptLoaded] = useState(false);
 
   const [isFedCMAuthenticating, setIsFedCMAuthenticating] = useState(false);
+  const [isOneTapAuthenticating, setIsOneTapAuthenticating] = useState(false);
   const [hasAttemptedAutoLogin, setHasAttemptedAutoLogin] = useState(false);
 
   const oneTapInitialized = useRef(false);
@@ -195,6 +196,7 @@ export const useGoogleAuth = () => {
       } else {
         // FedCM不可の環境のみ、自動One Tapを試す（ユーザーに見せてもOKなポリシーなら）
         if (oneTap && !promptedOnceRef.current) {
+          setIsOneTapAuthenticating(true);
           initializeGoogleOneTap();
           promptedOnceRef.current = true;
           window.google!.accounts.id.prompt();
@@ -207,6 +209,8 @@ export const useGoogleAuth = () => {
   const clear = () => {
     setToken(null);
     setError(null);
+    setIsFedCMAuthenticating(false);
+    setIsOneTapAuthenticating(false);
     promptedOnceRef.current = false;
     window.google?.accounts?.id?.disableAutoSelect?.();
   };
@@ -215,8 +219,10 @@ export const useGoogleAuth = () => {
     if (response?.credential) {
       setToken(response.credential);
       setError(null);
+      setIsOneTapAuthenticating(false);
     } else {
       setError('Missing Google credential');
+      setIsOneTapAuthenticating(false);
     }
   };
 
@@ -373,6 +379,7 @@ export const useGoogleAuth = () => {
     // One Tapを起動するときはFedCMを走らせない（UI競合防止）
     if (fedcmInFlightGlobal || isFedCMAuthenticating) return;
 
+    setIsOneTapAuthenticating(true);
     initializeGoogleOneTap();
     if (!promptedOnceRef.current) {
       promptedOnceRef.current = true;
@@ -409,6 +416,7 @@ export const useGoogleAuth = () => {
     isOneTapAvailable,
     isGoogleScriptLoaded,
     isFedCMAuthenticating,
+    isOneTapAuthenticating,
     hasAttemptedAutoLogin,
 
     // Actions
