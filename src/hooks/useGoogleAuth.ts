@@ -1,3 +1,4 @@
+// src/hooks/useGoogleAuth.ts
 import { useEffect, useRef, useState } from 'react';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';

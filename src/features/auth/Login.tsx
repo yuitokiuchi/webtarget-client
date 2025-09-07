@@ -1,3 +1,4 @@
+// src/features/auth/Login.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
@@ -45,6 +46,10 @@ const Login = () => {
       }
     };
     if (idToken) exchange(idToken);
+
+
+    // test
+    console.log('idToken', idToken);
   }, [idToken]);
 
   const disabled = !ready || signingIn || submitting;
