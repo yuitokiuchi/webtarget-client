@@ -1,0 +1,6 @@
+/*
+  Content-Security-Policy: script-src 'self' https://accounts.google.com https://apis.google.com 'nonce-%CSP_NONCE%'; connect-src 'self' https://accounts.google.com https://www.googleapis.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
+  Referrer-Policy: same-origin
+  X-Content-Type-Options: nosniff
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

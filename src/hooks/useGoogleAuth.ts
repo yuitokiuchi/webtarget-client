@@ -1,8 +1,18 @@
-// src/hooks/useGoogleAuth.ts
 import { useEffect, useRef, useState } from 'react';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || '';
+const loginUri = import.meta.env.VITE_GSI_LOGIN_URI || ''; // 追加: ITP対策用（任意）
+
+// You can optionally surface your CSP nonce via <meta name="csp-nonce" content="...">
+const getCspNonce = (): string | undefined => {
+  try {
+    const meta = document.querySelector('meta[name="csp-nonce"]') as HTMLMetaElement | null;
+    return meta?.content || (window as unknown as { __CSP_NONCE__?: string }).__CSP_NONCE__ || undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 interface CredentialResponse {
   credential: string; // Google ID token (JWT). Verify server-side.
@@ -33,10 +43,13 @@ declare global {
             callback: (response: CredentialResponse) => void;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
+            // Migration-related options
+            use_fedcm_for_prompt?: boolean;
+            itp_support?: boolean;
+            // ITP/FedCM補助。存在すれば指定可能。
+            login_uri?: string;
           }) => void;
-          prompt: (
-            cb?: (notification: PromptMomentNotification) => void
-          ) => void;
+          prompt: (cb?: (notification: PromptMomentNotification) => void) => void;
           disableAutoSelect?: () => void;
           cancel?: () => void;
           renderButton?: (parent: HTMLElement, options?: Record<string, unknown>) => void;
@@ -46,7 +59,7 @@ declare global {
   }
 }
 
-// Singleton loader for the GSI script
+// Singleton loader for the GSI script (+ CSP nonce)
 let gsiLoadPromise: Promise<void> | null = null;
 const loadGsiScript = (): Promise<void> => {
   if (typeof window === 'undefined') return Promise.resolve();
@@ -58,7 +71,6 @@ const loadGsiScript = (): Promise<void> => {
     if (existing) {
       existing.addEventListener('load', () => resolve(), { once: true });
       existing.addEventListener('error', () => reject(new Error('Failed to load Google GSI script')), { once: true });
-      // If script already loaded before listeners were attached
       if (window.google?.accounts?.id) resolve();
       return;
     }
@@ -67,6 +79,8 @@ const loadGsiScript = (): Promise<void> => {
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
+    const nonce = getCspNonce();
+    if (nonce) (script as HTMLScriptElement).nonce = nonce;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Failed to load Google GSI script'));
     document.head.appendChild(script);
@@ -93,7 +107,7 @@ const isFedCMSupported = (): boolean => {
 const isOneTapSupported = (): boolean =>
   typeof window !== 'undefined' && !!window.google?.accounts?.id;
 
-// PKCE helpers for standards-compliant OAuth fallback (optional backend exchange)
+// PKCE helpers
 const base64UrlEncode = (arr: ArrayBuffer): string =>
   btoa(String.fromCharCode(...new Uint8Array(arr)))
     .replace(/\+/g, '-')
@@ -103,7 +117,7 @@ const base64UrlEncode = (arr: ArrayBuffer): string =>
 const randomString = (length = 64): string => {
   const array = new Uint8Array(length);
   crypto.getRandomValues(array);
-  return Array.from(array, b => ('0' + b.toString(16)).slice(-2)).join('');
+  return Array.from(array, (b) => ('0' + b.toString(16)).slice(-2)).join('');
 };
 
 const createCodeChallenge = async (verifier: string): Promise<string> => {
@@ -113,7 +127,7 @@ const createCodeChallenge = async (verifier: string): Promise<string> => {
 };
 
 export const useGoogleAuth = () => {
-  const [token, setToken] = useState<string | null>(null); // Keep in memory only
+  const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [isFedCMAvailable, setIsFedCMAvailable] = useState(false);
@@ -124,9 +138,9 @@ export const useGoogleAuth = () => {
   const [hasAttemptedAutoLogin, setHasAttemptedAutoLogin] = useState(false);
 
   const oneTapInitialized = useRef(false);
+  const promptedOnceRef = useRef(false);
   const fedcmAbortRef = useRef<AbortController | null>(null);
 
-  // Load GIS script once
   useEffect(() => {
     let cancelled = false;
 
@@ -145,13 +159,14 @@ export const useGoogleAuth = () => {
 
     return () => {
       cancelled = true;
-      // Do not remove the script; keep singleton loaded for the app lifetime
     };
   }, []);
 
   // Auto-login attempt once (FedCM first, then One Tap)
   useEffect(() => {
     if (!isGoogleScriptLoaded || token || isFedCMAuthenticating || hasAttemptedAutoLogin) return;
+
+    setHasAttemptedAutoLogin(true); // guard re-entrancy early
 
     const fedCM = isFedCMSupported();
     const oneTap = isOneTapSupported();
@@ -160,35 +175,34 @@ export const useGoogleAuth = () => {
     setIsOneTapAvailable(oneTap);
 
     const tryOneTap = () => {
-      if (!isOneTapSupported()) return;
+      if (!isOneTapSupported() || promptedOnceRef.current) return;
       initializeGoogleOneTap();
-      window.google!.accounts.id.prompt(handlePromptMoment);
-      setHasAttemptedAutoLogin(true);
+      promptedOnceRef.current = true;
+      // Avoid relying on moment statuses for control flow (FedCM migration)
+      window.google!.accounts.id.prompt();
     };
 
-    if (fedCM) {
-      // Try passive first; browser may silently succeed if pre-authorized
-      authenticateWithFedCM('passive')
-        .catch(() => {
-          // Fallback to One Tap on failure
+    (async () => {
+      if (fedCM) {
+        try {
+          await authenticateWithFedCM('passive'); // silent
+          if (!token && oneTap) tryOneTap();
+        } catch {
           if (oneTap) tryOneTap();
-        })
-        .finally(() => {
-          setHasAttemptedAutoLogin(true);
-        });
-    } else if (oneTap) {
-      tryOneTap();
-    } else {
-      setError('No supported Google sign-in method. Use OAuth with PKCE.');
-      setHasAttemptedAutoLogin(true);
-    }
+        }
+      } else if (oneTap) {
+        tryOneTap();
+      } else {
+        setError('No supported Google sign-in method. Use OAuth with PKCE.');
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGoogleScriptLoaded, token, isFedCMAuthenticating, hasAttemptedAutoLogin]);
 
   const clear = () => {
     setToken(null);
     setError(null);
-    // Optional: clear One Tap auto select so user can pick accounts next time
+    promptedOnceRef.current = false;
     window.google?.accounts?.id?.disableAutoSelect?.();
   };
 
@@ -209,32 +223,35 @@ export const useGoogleAuth = () => {
       callback: handleGISCallback,
       auto_select: true,
       cancel_on_tap_outside: false,
+      use_fedcm_for_prompt: true,
+      itp_support: true,
+      ...(loginUri ? { login_uri: loginUri } : {}),
     });
 
     oneTapInitialized.current = true;
   };
 
+  // Optional diagnostics only
   const handlePromptMoment = (notification: PromptMomentNotification) => {
-    if (notification.isDisplayed()) {
-      // One Tap shown
-      return;
-    }
-    if (notification.isNotDisplayed()) {
-      const reason = notification.getNotDisplayedReason();
-      // Useful for diagnostics; avoid noisy UI here
-      if (reason) setError(`One Tap not displayed: ${reason}`);
-    }
-    if (notification.isSkippedMoment()) {
-      const reason = notification.getSkippedReason();
-      if (reason) setError(`One Tap skipped: ${reason}`);
-    }
-    if (notification.isDismissedMoment()) {
-      const reason = notification.getDismissedReason();
-      if (reason) setError(`One Tap dismissed: ${reason}`);
+    try {
+      if (notification.isNotDisplayed()) {
+        const reason = notification.getNotDisplayedReason();
+        if (reason) console.debug('[GSI] One Tap not displayed:', reason);
+      }
+      if (notification.isSkippedMoment()) {
+        const reason = notification.getSkippedReason();
+        if (reason) console.debug('[GSI] One Tap skipped:', reason);
+      }
+      if (notification.isDismissedMoment()) {
+        const reason = notification.getDismissedReason();
+        if (reason) console.debug('[GSI] One Tap dismissed:', reason);
+      }
+    } catch {
+      // Intentionally empty: diagnostics only
     }
   };
 
-  // FedCM sign-in. Mode: 'passive' (silent) or 'active' (may show account chooser)
+  // FedCM sign-in
   const authenticateWithFedCM = async (mode: 'passive' | 'active' = 'passive') => {
     if (isFedCMAuthenticating || !isFedCMSupported()) {
       throw new Error('FedCM not available or already authenticating');
@@ -265,18 +282,16 @@ export const useGoogleAuth = () => {
         setToken(credential.token);
         setError(null);
       } else {
-        setError('No FedCM token returned');
         throw new Error('No FedCM token');
       }
     } catch (err) {
       const e = err as Error;
       if (e.name === 'AbortError') {
-        // Component unmounted or cancelled
+        // ignore
       } else if (e.name === 'NotAllowedError') {
-        setError('FedCM blocked or not permitted in browser settings');
-        // Fallback expected to One Tap by caller
+        console.debug('FedCM not allowed:', e.message);
       } else {
-        setError(`FedCM error: ${e.message}`);
+        console.debug('FedCM error:', e.message);
       }
       throw err;
     } finally {
@@ -285,7 +300,6 @@ export const useGoogleAuth = () => {
     }
   };
 
-  // Clean up any in-flight FedCM request
   useEffect(() => {
     return () => {
       fedcmAbortRef.current?.abort();
@@ -293,8 +307,7 @@ export const useGoogleAuth = () => {
     };
   }, []);
 
-  // Standards-compliant OAuth fallback (Authorization Code with PKCE)
-  // Exchange the returned "code" on your backend to mint your session.
+  // Authorization Code + PKCE
   const startOAuthPkce = async (scopes = ['openid', 'email', 'profile']) => {
     if (!clientId || !redirectUri) {
       setError('Missing env: VITE_GOOGLE_CLIENT_ID or VITE_GOOGLE_REDIRECT_URI');
@@ -319,11 +332,8 @@ export const useGoogleAuth = () => {
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   };
 
-  // For backward compatibility (not recommended): implicit flow redirect
   const signInWithOAuth = () => {
-    setError(
-      'Implicit flow is discouraged. Prefer One Tap or PKCE. Proceeding anyway.'
-    );
+    setError('Implicit flow is discouraged. Prefer One Tap or PKCE. Proceeding anyway.');
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -334,14 +344,17 @@ export const useGoogleAuth = () => {
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   };
 
-  // Optional manual triggers
+  // Expose: manual triggers
   const signInWithOneTap = () => {
     if (!isOneTapSupported()) {
       setError('One Tap not available');
       return;
     }
     initializeGoogleOneTap();
-    window.google!.accounts.id.prompt(handlePromptMoment);
+    if (!promptedOnceRef.current) {
+      promptedOnceRef.current = true;
+      window.google!.accounts.id.prompt(handlePromptMoment);
+    }
   };
 
   const signInWithFedCM = (mode: 'passive' | 'active' = 'active') => {
@@ -349,8 +362,20 @@ export const useGoogleAuth = () => {
       setError('FedCM not available');
       return;
     }
-    authenticateWithFedCM(mode).catch(() => {
-      // Swallow here; caller can check error state
+    authenticateWithFedCM(mode).catch(() => {});
+  };
+
+  // New: render a visible Google button for click-initiated sign-in
+  const renderGoogleButton = (container: HTMLElement, options: Record<string, unknown> = {}) => {
+    if (!window.google?.accounts?.id) return;
+    initializeGoogleOneTap();
+    window.google.accounts.id.renderButton?.(container, {
+      type: 'standard',
+      theme: 'filled_blue',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      ...options,
     });
   };
 
@@ -368,7 +393,8 @@ export const useGoogleAuth = () => {
     clear,
     signInWithOneTap,
     signInWithFedCM,
-    startOAuthPkce, // Preferred standards fallback
-    signInWithOAuth, // Legacy fallback (not recommended)
+    startOAuthPkce,
+    signInWithOAuth,
+    renderGoogleButton, // ← 追加
   };
 };
