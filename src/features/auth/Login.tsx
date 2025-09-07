@@ -8,9 +8,7 @@ const Login = () => {
     isFedCMAvailable,
     isOneTapAvailable,
     isGoogleScriptLoaded,
-    isFedCMAuthenticating,
     hasAttemptedAutoLogin,
-    signInWithFedCM,
     signInWithOneTap,
     startOAuthPkce,
     clear,
@@ -58,28 +56,18 @@ const Login = () => {
   }, [token]);
 
   // Production sign-in that intelligently tries the best available method
+  // Skip FedCM to avoid user dismissal issues, use more reliable methods
   const signInWithGoogle = async () => {
     addLog('Starting Google sign-in...');
     
-    // Try FedCM first if available (most secure, privacy-preserving)
-    if (isFedCMAvailable && !isFedCMAuthenticating) {
-      try {
-        addLog('Attempting FedCM authentication...');
-        await signInWithFedCM('active');
-        return;
-      } catch (e) {
-        addLog(`FedCM failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
-      }
-    }
-
-    // Fallback to One Tap if available
+    // Try One Tap first (more reliable than FedCM)
     if (isOneTapAvailable) {
-      addLog('Falling back to One Tap...');
+      addLog('Attempting One Tap authentication...');
       signInWithOneTap();
       return;
     }
 
-    // Final fallback to PKCE OAuth (most compatible)
+    // Fallback to PKCE OAuth (most compatible)
     addLog('Falling back to OAuth with PKCE...');
     await startOAuthPkce();
   };
@@ -153,7 +141,7 @@ const Login = () => {
           )}
 
           {/* Loading State */}
-          {(isFedCMAuthenticating || isExchanging) && (
+          {isExchanging && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <div className="flex items-center">
                 <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -161,7 +149,7 @@ const Login = () => {
                   <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 <span className="text-sm text-blue-700">
-                  {isFedCMAuthenticating ? 'Signing in...' : 'Exchanging token...'}
+                  Exchanging token...
                 </span>
               </div>
             </div>
@@ -171,7 +159,7 @@ const Login = () => {
           <div className="space-y-4">
             <button
               onClick={signInWithGoogle}
-              disabled={isFedCMAuthenticating || isExchanging}
+              disabled={isExchanging}
               className="w-full flex justify-center items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -236,8 +224,9 @@ const Login = () => {
             )}
 
             <div className="text-xs text-gray-500 space-y-1">
-              <p><strong>Supported Methods:</strong> FedCM (Chrome 108+), One Tap (most browsers), OAuth PKCE (universal fallback)</p>
+              <p><strong>Supported Methods:</strong> One Tap (most browsers), OAuth PKCE (universal fallback)</p>
               <p><strong>Security:</strong> ID tokens verified server-side, HttpOnly cookies recommended for sessions</p>
+              <p><strong>Note:</strong> FedCM available but skipped to avoid dismissal issues</p>
             </div>
           </div>
         </div>

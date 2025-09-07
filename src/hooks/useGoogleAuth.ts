@@ -9,6 +9,8 @@ const debugPromptMoment = import.meta.env.VITE_GSI_DEBUG_PROMPT_MOMENT === 'true
 let autoLoginAttemptedGlobal = false;
 // FedCMの並列実行防止（StrictMode再マウント対策も兼ねる）
 let fedcmInFlightGlobal = false;
+// FedCMがユーザーによって拒否された場合のガード
+let fedcmDismissedGlobal = false;
 
 // You can optionally surface your CSP nonce via <meta name="csp-nonce" content="...">
 const getCspNonce = (): string | undefined => {
@@ -259,6 +261,10 @@ export const useGoogleAuth = () => {
     if (!isFedCMSupported()) {
       throw new Error('FedCM not available');
     }
+    // FedCMがユーザーによって以前拒否されている場合はスキップ
+    if (fedcmDismissedGlobal) {
+      throw new Error('FedCM was previously dismissed by user');
+    }
     // 並列実行をグローバルに防止（StrictMode再マウント時の競合も回避）
     if (fedcmInFlightGlobal) {
       throw new Error('FedCM already in flight');
@@ -300,6 +306,8 @@ export const useGoogleAuth = () => {
       if (e.name === 'AbortError') {
         // ignore
       } else if (e.name === 'NotAllowedError') {
+        // ユーザーがFedCMを拒否した場合、今後のリクエストを防ぐ
+        fedcmDismissedGlobal = true;
         console.debug('FedCM not allowed:', e.message);
       } else {
         console.debug('FedCM error:', e.message);
