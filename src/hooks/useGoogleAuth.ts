@@ -5,11 +5,9 @@ const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || '';
 const loginUri = import.meta.env.VITE_GSI_LOGIN_URI || '';
 const debugPromptMoment = import.meta.env.VITE_GSI_DEBUG_PROMPT_MOMENT === 'true';
 
-// StrictModeや再マウントでも生存するガード（自動サインインはページライフで一度）:
+// StrictModeや再マウントでも生存するガード
 let autoLoginAttemptedGlobal = false;
-// FedCMの並列実行防止（StrictMode再マウント対策も兼ねる）
 let fedcmInFlightGlobal = false;
-// FedCMがユーザーによって拒否された場合のガード
 let fedcmDismissedGlobal = false;
 
 // You can optionally surface your CSP nonce via <meta name="csp-nonce" content="...">
@@ -147,6 +145,16 @@ export const useGoogleAuth = () => {
   const promptedOnceRef = useRef(false);
   const fedcmAbortRef = useRef<AbortController | null>(null);
 
+  // Always reflect feature availability ASAP (independent of auto login flow)
+  useEffect(() => {
+    setIsFedCMAvailable(isFedCMSupported());
+  }, []);
+  useEffect(() => {
+    if (isGoogleScriptLoaded) {
+      setIsOneTapAvailable(isOneTapSupported());
+    }
+  }, [isGoogleScriptLoaded]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -157,7 +165,10 @@ export const useGoogleAuth = () => {
 
     loadGsiScript()
       .then(() => {
-        if (!cancelled) setIsGoogleScriptLoaded(true);
+        if (!cancelled) {
+          setIsGoogleScriptLoaded(true);
+          setIsOneTapAvailable(isOneTapSupported());
+        }
       })
       .catch((e) => {
         if (!cancelled) setError(e.message || 'Failed to load Google script');
@@ -168,11 +179,10 @@ export const useGoogleAuth = () => {
     };
   }, []);
 
-  // Auto-login once per page life. FedCMが使える場合は「passive」のみを試し、失敗しても自動でOne Tapは起動しない。
+  // Auto-login once per page life. Try FedCM ('passive') silently; if not supported, optionally prompt One Tap once.
   useEffect(() => {
     if (!isGoogleScriptLoaded || token || isFedCMAuthenticating || hasAttemptedAutoLogin) return;
 
-    // StrictMode対策: モジュールスコープのガードで二重起動を封じる
     if (autoLoginAttemptedGlobal) {
       setHasAttemptedAutoLogin(true);
       return;
@@ -189,17 +199,22 @@ export const useGoogleAuth = () => {
     (async () => {
       if (fedCM) {
         try {
-          await authenticateWithFedCM('passive'); // UIなしで取得できるなら取る
+          await authenticateWithFedCM('passive'); // No UI
         } catch {
-          // ここではUIを自動で出さない。ユーザー操作でFedCM active or One Tap or PKCEへ。
+          // Silent only; leave UI to user action.
         }
       } else {
-        // FedCM不可の環境のみ、自動One Tapを試す（ユーザーに見せてもOKなポリシーなら）
         if (oneTap && !promptedOnceRef.current) {
           setIsOneTapAuthenticating(true);
           initializeGoogleOneTap();
           promptedOnceRef.current = true;
-          window.google!.accounts.id.prompt();
+          try {
+            window.google!.accounts.id.prompt(debugPromptMoment ? handlePromptMoment : undefined);
+          } catch {
+            // ignore prompt errors
+          } finally {
+            setIsOneTapAuthenticating(false);
+          }
         }
       }
     })();
@@ -234,7 +249,7 @@ export const useGoogleAuth = () => {
       callback: handleGISCallback,
       auto_select: true,
       cancel_on_tap_outside: false,
-      use_fedcm_for_prompt: true, // ただしFedCM対応ブラウザでは自動promptしない運用にしたので重複しない
+      use_fedcm_for_prompt: true,
       itp_support: true,
       ...(loginUri ? { login_uri: loginUri } : {}),
     });
@@ -245,18 +260,9 @@ export const useGoogleAuth = () => {
   // Optional diagnostics only
   const handlePromptMoment = (notification: PromptMomentNotification) => {
     try {
-      if (notification.isNotDisplayed()) {
-        const reason = notification.getNotDisplayedReason();
-        if (reason) console.debug('[GSI] One Tap not displayed:', reason);
-      }
-      if (notification.isSkippedMoment()) {
-        const reason = notification.getSkippedReason();
-        if (reason) console.debug('[GSI] One Tap skipped:', reason);
-      }
-      if (notification.isDismissedMoment()) {
-        const reason = notification.getDismissedReason();
-        if (reason) console.debug('[GSI] One Tap dismissed:', reason);
-      }
+      if (notification.isNotDisplayed()) console.debug('[GSI] not displayed:', notification.getNotDisplayedReason());
+      if (notification.isSkippedMoment()) console.debug('[GSI] skipped:', notification.getSkippedReason());
+      if (notification.isDismissedMoment()) console.debug('[GSI] dismissed:', notification.getDismissedReason());
     } catch {
       // ignore
     }
@@ -265,19 +271,23 @@ export const useGoogleAuth = () => {
   // FedCM sign-in
   const authenticateWithFedCM = async (mode: 'passive' | 'active' = 'passive') => {
     if (!isFedCMSupported()) {
-      throw new Error('FedCM not available');
+      const err = new Error('FedCM not available');
+      setError(err.message);
+      throw err;
     }
-    // FedCMがユーザーによって以前拒否されている場合はスキップ
     if (fedcmDismissedGlobal) {
-      throw new Error('FedCM was previously dismissed by user');
+      const err = new Error('FedCM was previously dismissed by user');
+      setError(err.message);
+      throw err;
     }
-    // 並列実行をグローバルに防止（StrictMode再マウント時の競合も回避）
     if (fedcmInFlightGlobal) {
-      throw new Error('FedCM already in flight');
+      const err = new Error('FedCM already in flight');
+      setError(err.message);
+      throw err;
     }
     fedcmInFlightGlobal = true;
 
-    // One Tapが表示されている可能性を潰してからFedCMへ（UI重複防止）
+    // Avoid UI overlap
     window.google?.accounts?.id?.cancel?.();
 
     setIsFedCMAuthenticating(true);
@@ -305,18 +315,20 @@ export const useGoogleAuth = () => {
         setToken(credential.token);
         setError(null);
       } else {
-        throw new Error('No FedCM token');
+        const err = new Error('No FedCM token');
+        setError(err.message);
+        throw err;
       }
     } catch (err) {
-      const e = err as Error;
+      const e = err as Error & { name?: string };
       if (e.name === 'AbortError') {
         // ignore
       } else if (e.name === 'NotAllowedError') {
-        // ユーザーがFedCMを拒否した場合、今後のリクエストを防ぐ
-        fedcmDismissedGlobal = true;
-        console.debug('FedCM not allowed:', e.message);
-      } else {
-        console.debug('FedCM error:', e.message);
+        fedcmDismissedGlobal = true; // user dismissed / not allowed
+      }
+      // Surface readable hint; common in Guest/No session cases:
+      if (e.message?.includes('Not signed in') || e.name === 'NotAllowedError') {
+        setError('FedCM failed: Not signed in with the identity provider or user dismissed.');
       }
       throw err;
     } finally {
@@ -376,36 +388,43 @@ export const useGoogleAuth = () => {
       setError('One Tap not available');
       return;
     }
-    // One Tapを起動するときはFedCMを走らせない（UI競合防止）
-    if (fedcmInFlightGlobal || isFedCMAuthenticating) return;
+    if (fedcmInFlightGlobal || isFedCMAuthenticating) return; // avoid overlap
 
     setIsOneTapAuthenticating(true);
     initializeGoogleOneTap();
     if (!promptedOnceRef.current) {
       promptedOnceRef.current = true;
-      window.google!.accounts.id.prompt(debugPromptMoment ? handlePromptMoment : undefined);
+      try {
+        window.google!.accounts.id.prompt(debugPromptMoment ? handlePromptMoment : undefined);
+      } finally {
+        // The callback will set authenticating=false when token is received; also ensure we don't get stuck
+        setTimeout(() => setIsOneTapAuthenticating(false), 1500);
+      }
+    } else {
+      setIsOneTapAuthenticating(false);
     }
   };
 
-  const signInWithFedCM = (mode: 'passive' | 'active' = 'active') => {
-    if (!isFedCMSupported()) {
-      setError('FedCM not available');
-      return;
-    }
-    authenticateWithFedCM(mode).catch(() => {});
+  const signInWithFedCM = async (mode: 'passive' | 'active' = 'active') => {
+    return authenticateWithFedCM(mode);
   };
 
   const renderGoogleButton = (container: HTMLElement, options: Record<string, unknown> = {}) => {
     if (!window.google?.accounts?.id) return;
     initializeGoogleOneTap();
-    window.google.accounts.id.renderButton?.(container, {
-      type: 'standard',
-      theme: 'filled_blue',
-      size: 'large',
-      text: 'signin_with',
-      shape: 'rectangular',
-      ...options,
-    });
+    try {
+      window.google.accounts.id.renderButton?.(container, {
+        type: 'standard',
+        theme: 'filled_blue',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        width: 320,
+        ...options,
+      });
+    } catch {
+      // swallow; caller can show fallback
+    }
   };
 
   return {
