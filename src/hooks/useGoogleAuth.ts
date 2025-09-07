@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || '';
 const loginUri = import.meta.env.VITE_GSI_LOGIN_URI || '';
+const debugPromptMoment = import.meta.env.VITE_GSI_DEBUG_PROMPT_MOMENT === 'true';
 
 // StrictModeや再マウントでも生存するガード（自動サインインはページライフで一度）:
 let autoLoginAttemptedGlobal = false;
@@ -367,7 +368,7 @@ export const useGoogleAuth = () => {
     initializeGoogleOneTap();
     if (!promptedOnceRef.current) {
       promptedOnceRef.current = true;
-      window.google!.accounts.id.prompt(handlePromptMoment);
+      window.google!.accounts.id.prompt(debugPromptMoment ? handlePromptMoment : undefined);
     }
   };
 
