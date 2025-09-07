@@ -7,3 +7,4 @@ This is a template for a React project using Vite and Tailwind CSS.
 - Vite
 - Tailwind CSS
 - Redux Toolkit
+- Axios
