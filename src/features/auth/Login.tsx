@@ -73,19 +73,11 @@ const Login = () => {
             <h1 className="text-xl font-medium text-gray-900">Sign In</h1>
           </div>
 
-          {/* 
-            MODIFIED: The parent div is now a flex column to better manage the space.
-            The space-y-4 is moved to this parent.
-          */}
           <div className="flex flex-col items-center space-y-4">
             {/* GSI Button Container */}
             <div ref={gsiRef} />
             
-            {/* 
-              [THE FIX] Status Message Container
-              This div has a fixed height (h-8), so it always occupies the same vertical space,
-              preventing layout shift when the messages appear or disappear.
-            */}
+            {/* Status Messages */}
             <div className="h-8 flex items-center justify-center">
               {(error || submitError) ? (
                 <div className="text-sm text-error-500">{submitError || error}</div>
