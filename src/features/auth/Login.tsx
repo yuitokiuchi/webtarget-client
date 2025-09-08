@@ -6,7 +6,7 @@ import LogoIcon from '@/assets/icons/icon.svg?react';
 const Logo = () => (
   <div className="flex items-center space-x-2.5">
     <LogoIcon className="w-8 h-8" />
-    <span className="text-lg font-medium text-black">Fooval</span>
+    <span className="text-lg font-medium text-gray-900">Client</span>
   </div>
 );
 
@@ -57,7 +57,7 @@ const Login = () => {
   }, [idToken]);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       
       {/* Header */}
       <header className="p-8">
@@ -70,28 +70,29 @@ const Login = () => {
           
           {/* Title */}
           <div className="text-center">
-            <h1 className="text-xl font-medium text-black">Sign In</h1>
+            <h1 className="text-xl font-medium text-gray-900">Sign In</h1>
           </div>
 
-          {/* Google Sign-in Button */}
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <div ref={gsiRef} />
-            </div>
+          {/* 
+            MODIFIED: The parent div is now a flex column to better manage the space.
+            The space-y-4 is moved to this parent.
+          */}
+          <div className="flex flex-col items-center space-y-4">
+            {/* GSI Button Container */}
+            <div ref={gsiRef} />
             
-            {/* Loading State */}
-            {(signingIn || submitting) && (
-              <div className="text-center py-2">
-                <div className="text-sm text-gray-600">Signing in...</div>
-              </div>
-            )}
-
-            {/* Error State */}
-            {(error || submitError) && (
-              <div className="text-center py-2">
-                <div className="text-sm text-gray-900">{submitError || error}</div>
-              </div>
-            )}
+            {/* 
+              [THE FIX] Status Message Container
+              This div has a fixed height (h-8), so it always occupies the same vertical space,
+              preventing layout shift when the messages appear or disappear.
+            */}
+            <div className="h-8 flex items-center justify-center">
+              {(error || submitError) ? (
+                <div className="text-sm text-error-500">{submitError || error}</div>
+              ) : (signingIn || submitting) ? (
+                <div className="text-sm text-gray-500">Signing in...</div>
+              ) : null}
+            </div>
           </div>
 
         </div>
@@ -100,8 +101,8 @@ const Login = () => {
       {/* Footer */}
       <footer className="p-8 text-center">
         <div className="space-x-4 text-sm text-gray-500">
-          <a href="/terms" className="hover:text-black transition-colors">Terms</a>
-          <a href="/privacy" className="hover:text-black transition-colors">Privacy</a>
+          <a href="/terms" className="hover:text-gray-900 transition-colors">Terms</a>
+          <a href="/privacy" className="hover:text-gray-900 transition-colors">Privacy</a>
         </div>
       </footer>
 

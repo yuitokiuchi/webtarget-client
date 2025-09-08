@@ -1,0 +1,101 @@
+/* src/styles/tailwind.css */
+
+@import "tailwindcss";
+
+/* 
+ * @theme: CSS Variables for Theming (In english comment)
+ */
+@theme {
+  /* PRIMARY COLORS */
+  --color-primary-50:  oklch(96% 0.03 260);    /* Very light purple (hover background, etc.) */
+  --color-primary-100: oklch(92% 0.05 260);    /* Light purple (badge background, etc.) */
+  --color-primary-500: oklch(55% 0.15 260);    /* [Base] Main brand color */
+  --color-primary-600: oklch(50% 0.16 260);    /* [Hover] Slightly darker brand color */
+  --color-primary-700: oklch(45% 0.17 260);    /* [Active] Even darker brand color */
+
+  /* NEUTRAL COLORS */
+  --color-gray-50:  oklch(99% 0.005 260);   /* Very light gray (main background) */
+  --color-gray-100: oklch(96% 0.01 260);    /* Light gray (card background, etc.) */
+  --color-gray-200: oklch(92% 0.012 260);   /* Gray (border) */
+  --color-gray-400: oklch(75% 0.015 260);   /* Disabled text */
+  --color-gray-500: oklch(65% 0.015 260);   /* Secondary text and icons */
+  --color-gray-900: oklch(20% 0.01 260);    /* Main text and headings */
+
+  /* SEMANTIC COLORS */
+  /* Success */
+  --color-success-100: oklch(95% 0.05 150);
+  --color-success-500: oklch(65% 0.15 150);
+  /* Error */
+  --color-error-100: oklch(95% 0.05 25);
+  --color-error-500: oklch(60% 0.2 25);
+  /* Warning */
+  --color-warning-100: oklch(95% 0.05 80);
+  --color-warning-500: oklch(80% 0.15 80);
+
+  /* Font Families (Google Fonts-based) */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif: "Lora", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Text Sizes */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+  --text-5xl: 3rem;       /* 48px */
+
+  /* Line Heights (for text readability) */
+  --leading-none: 1;      /* 1 */
+  --leading-tight: 1.25;  /* 1.25 */
+  --leading-normal: 1.5;  /* 1.5 (default for body text) */
+  --leading-loose: 2;     /* 2 */
+
+  /* Spacing Scale (for margins, padding, gaps, etc.) */
+  --spacing-1: 0.25rem;   /* 4px */
+  --spacing-2: 0.5rem;    /* 8px */
+  --spacing-4: 1rem;      /* 16px */
+  --spacing-6: 1.5rem;    /* 24px */
+  --spacing-8: 2rem;      /* 32px */
+  --spacing-12: 3rem;     /* 48px */
+  --spacing-16: 4rem;     /* 64px */
+
+  /* Border Radius */
+  --radius-md: 0.375rem;  /* 6px */
+  --radius-lg: 0.5rem;    /* 8px */
+  --radius-full: 9999px;
+
+  /* Shadows (for card elevation, etc.) */
+  --shadow-sm: 0 1px 2px 0 oklch(0% 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.1), 0 2px 4px -2px oklch(0% 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.1), 0 4px 6px -4px oklch(0% 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px oklch(0% 0 0 / 0.1), 0 8px 10px -6px oklch(0% 0 0 / 0.1);
+}
+
+/* 
+ * @layer base: Common styles for basic HTML elements
+ */
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    /* [MODIFIED] Use a variable for the background color for consistency */
+    background-color: var(--color-gray-50);
+    color: var(--color-gray-900);
+    /* [ADDED] Set a default line height for better readability */
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    color: var(--color-primary-500);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  a:hover {
+    color: var(--color-primary-600);
+  }
+}
