@@ -1,21 +1,31 @@
 // src/features/auth/Login.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import LogoIcon from '@/assets/icons/icon.svg?react';
+
+const Logo = () => (
+  <div className="flex items-center space-x-2.5">
+    <LogoIcon className="w-8 h-8" />
+    <span className="text-lg font-medium text-black">Fooval</span>
+  </div>
+);
 
 const Login = () => {
   const { idToken, ready, error, signingIn, mountGsiButton } = useGoogleAuth();
-
-  // ボタン描画
   const gsiRef = useRef<HTMLDivElement | null>(null);
   const mountedRef = useRef(false);
+
   useEffect(() => {
     if (ready && gsiRef.current && !mountedRef.current) {
-      mountGsiButton(gsiRef.current, { width: 360 });
+      mountGsiButton(gsiRef.current, { 
+        theme: 'outline', 
+        size: 'large', 
+        width: '320'
+      });
       mountedRef.current = true;
     }
   }, [ready, mountGsiButton]);
 
-  // サーバーへIDトークンを送ってセッション確立 → リダイレクト
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,68 +43,68 @@ const Login = () => {
         });
         if (!res.ok) {
           const msg = await res.text().catch(() => '');
-          throw new Error(msg || 'Sign-in failed');
+          throw new Error(msg || 'Authentication failed');
         }
-        // サーバー側で HttpOnly Cookie（refresh 等）をセットし、必要ならアクセストークンをJSONで返す設計
-        // 成功したら遷移
         window.location.replace(nextUrl);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Sign-in failed';
+        const msg = e instanceof Error ? e.message : 'Authentication failed';
         setSubmitError(msg);
       } finally {
         setSubmitting(false);
       }
     };
     if (idToken) exchange(idToken);
-
-
-    // test
-    console.log('idToken', idToken);
   }, [idToken]);
 
-  const disabled = !ready || signingIn || submitting;
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Sign in</h1>
-        </div>
+    <div className="min-h-screen bg-white flex flex-col">
+      
+      {/* Header */}
+      <header className="p-8">
+        <Logo />
+      </header>
 
-        <div className="space-y-4">
-          {/* メインのGSIボタン */}
-          <div ref={gsiRef} className="flex justify-center" />
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-8">
+        <div className="w-full max-w-xs space-y-8">
+          
+          {/* Title */}
+          <div className="text-center">
+            <h1 className="text-xl font-medium text-black">Sign In</h1>
+          </div>
 
-          {/* 進行中の簡潔UI */}
-          {(signingIn || submitting) && (
-            <div className="text-center text-sm text-gray-600 select-none">Signing in...</div>
-          )}
-
-          {/* 最小限のエラー表示 */}
-          {(error || submitError) && (
-            <div className="text-center text-sm text-red-600" role="alert" aria-live="polite">
-              {submitError || error}
+          {/* Google Sign-in Button */}
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              <div ref={gsiRef} />
             </div>
-          )}
+            
+            {/* Loading State */}
+            {(signingIn || submitting) && (
+              <div className="text-center py-2">
+                <div className="text-sm text-gray-600">Signing in...</div>
+              </div>
+            )}
 
-          {/* 代替アクション（最小限、冪等にdisabled） */}
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                // ユーザー操作による明示的なプロンプトを許可（One Tap / FedCM UIはGSIが判断）
-                window.google?.accounts?.id?.prompt();
-              } catch {
-                // ignore
-              }
-            }}
-            disabled={disabled}
-            className="w-full text-sm text-gray-600 hover:text-gray-900 underline disabled:opacity-50"
-          >
-            Try again
-          </button>
+            {/* Error State */}
+            {(error || submitError) && (
+              <div className="text-center py-2">
+                <div className="text-sm text-gray-900">{submitError || error}</div>
+              </div>
+            )}
+          </div>
+
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="p-8 text-center">
+        <div className="space-x-4 text-sm text-gray-500">
+          <a href="/terms" className="hover:text-black transition-colors">Terms</a>
+          <a href="/privacy" className="hover:text-black transition-colors">Privacy</a>
+        </div>
+      </footer>
+
     </div>
   );
 };
