@@ -56,12 +56,6 @@ const spellingSlice = createSlice({
       const currentWord = state.words[state.currentIndex];
       if (!currentWord) return;
 
-      console.log('submitAnswer called:', {
-        userAnswer: action.payload,
-        currentWord: currentWord.word,
-        currentAnswersLength: state.answers.length,
-      });
-
       const isCorrect = checkSpelling(action.payload, currentWord.word);
       const answer: SpellingAnswer = {
         wordId: currentWord.id,
@@ -71,8 +65,6 @@ const spellingSlice = createSlice({
       };
 
       state.answers.push(answer);
-      
-      console.log('Answer added. Total answers now:', state.answers.length);
     },
 
     /**
@@ -127,18 +119,11 @@ const spellingSlice = createSlice({
      * 間違えた単語で復習モードを開始
      */
     startReviewMode: (state, action: PayloadAction<{ incorrectWords: any[] }>) => {
-      console.log('=== startReviewMode reducer ===');
-      console.log('incorrectWords received:', action.payload.incorrectWords);
-      console.log('incorrectWords length:', action.payload.incorrectWords.length);
-      
       state.words = action.payload.incorrectWords;
       state.currentIndex = 0;
       state.answers = [];
       state.isReviewMode = true;
       state.error = null;
-      
-      console.log('state.words after assignment:', state.words);
-      console.log('state.isReviewMode:', state.isReviewMode);
     },
 
     /**

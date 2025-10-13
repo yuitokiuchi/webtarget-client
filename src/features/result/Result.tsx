@@ -48,18 +48,13 @@ const Result = () => {
 
   // 間違えた問題だけ復習
   const handleReview = () => {
-    console.log('=== handleReview called ===');
-    console.log('incorrectWords.length:', incorrectWords.length);
-    
     if (incorrectWords.length === 0) return;
 
     // 間違えた単語のリストを抽出
     const incorrectWordList = incorrectWords.map(stat => stat.word);
-    console.log('incorrectWordList:', incorrectWordList);
 
     // 復習モードを開始（useEffectで遷移する）
     dispatch(startReviewMode({ incorrectWords: incorrectWordList }));
-    console.log('startReviewMode dispatched');
   };
 
   return (

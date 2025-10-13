@@ -16,12 +16,6 @@ import {
 export const useResult = () => {
   const { words, answers } = useAppSelector(state => state.spelling);
 
-  // デバッグ用: answers の内容を確認
-  console.log('=== Result Debug ===');
-  console.log('Total answers:', answers.length);
-  console.log('Answers:', answers);
-  console.log('Words:', words.length);
-
   // 全単語の統計（間違い回数の多い順）
   const allWordStats = useMemo(
     () => getMistakeStatsByWord(words, answers),
