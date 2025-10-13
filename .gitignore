@@ -29,3 +29,5 @@ storybook-static
 
 docs-llm
 copilot
+
+package-lock.json
