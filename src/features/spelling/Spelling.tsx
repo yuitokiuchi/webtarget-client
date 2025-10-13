@@ -22,6 +22,8 @@ const Spelling = () => {
     answers,
     handleKeyDown,
     handleInputChange,
+    handleSubmit,
+    handleNext,
   } = useSpelling();
 
   // 単語がない場合はホームに戻る（復習モードを除く）
@@ -55,13 +57,32 @@ const Spelling = () => {
   // 統計計算
   const stats = calculateStats(answers, words);
 
+  // ホームに戻る
+  const handleGoHome = () => {
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-[var(--color-light-bg)] text-[var(--color-light-text)] px-6 py-8">
       <div className="w-full max-w-2xl mx-auto">
+        {/* Home Button */}
+        <div className="mb-4">
+          <button
+            onClick={handleGoHome}
+            className="text-sm text-[var(--color-light-text-muted)] hover:text-[var(--color-light-text)] transition-colors flex items-center gap-1"
+            aria-label="Go to home"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Home</span>
+          </button>
+        </div>
+
         {/* Review Mode Badge */}
         {isReviewMode && (
           <div className="mb-4 text-center">
-            <span className="inline-block px-4 py-2 bg-[var(--color-error-100)] text-[var(--color-error-500)] rounded-full text-sm font-medium">
+            <span className="inline-block px-4 py-2 bg-[var(--color-gray-200)] text-[var(--color-light-text-muted)] rounded-full text-sm font-light">
               Review Mode
             </span>
           </div>
@@ -71,7 +92,7 @@ const Spelling = () => {
         <div className="flex items-center justify-between mb-6 text-sm text-[var(--color-light-text-muted)]">
           <div className="flex items-center gap-6">
             <span>
-              <span className="text-[var(--color-success-500)] font-medium">{stats.correct}</span>
+              <span className="text-[var(--color-light-text)] font-medium">{stats.correct}</span>
               {' / '}
               <span className="text-[var(--color-light-text)]">{stats.total}</span>
             </span>
@@ -111,35 +132,21 @@ const Spelling = () => {
                 onKeyDown={handleKeyDown}
                 placeholder={showFeedback ? '' : 'Type the spelling...'}
                 readOnly={showFeedback}
-                className="w-full px-6 py-3 text-center text-xl font-light bg-white border-2 border-[var(--color-light-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary-500)] transition-colors read-only:bg-[var(--color-gray-100)] read-only:cursor-default"
+                className="w-full px-6 py-3 text-center text-xl font-light bg-white border-2 border-[var(--color-light-border)] rounded-lg focus:outline-none focus:border-[var(--color-light-text)] transition-colors read-only:bg-[var(--color-gray-100)] read-only:cursor-default"
                 autoFocus
               />
 
               {/* Feedback Overlay */}
               {showFeedback && (
                 <div
-                  className={`absolute inset-0 flex items-center justify-center rounded-lg backdrop-blur-sm ${
-                    isCorrectAnswer
-                      ? 'bg-[var(--color-success-500)]'
-                      : 'bg-[var(--color-error-500)]'
-                  } bg-opacity-20 border-2 ${
-                    isCorrectAnswer
-                      ? 'border-[var(--color-success-500)]'
-                      : 'border-[var(--color-error-500)]'
-                  }`}
+                  className="absolute inset-0 flex items-center justify-center rounded-lg backdrop-blur-sm bg-[var(--color-gray-300)] bg-opacity-30 border-2 border-[var(--color-light-text)]"
                 >
                   <div className="text-center bg-white rounded-lg px-6 py-3 shadow-lg">
-                    <div
-                      className={`text-4xl mb-1 ${
-                        isCorrectAnswer
-                          ? 'text-[var(--color-success-500)]'
-                          : 'text-[var(--color-error-500)]'
-                      }`}
-                    >
+                    <div className="text-4xl mb-1 text-[var(--color-light-text)]">
                       {isCorrectAnswer ? '✓' : '✗'}
                     </div>
                     {!isCorrectAnswer && (
-                      <div className="text-base text-[var(--color-error-500)] font-medium">
+                      <div className="text-base text-[var(--color-light-text)] font-medium">
                         {currentWord.word}
                       </div>
                     )}
@@ -148,15 +155,25 @@ const Spelling = () => {
               )}
             </div>
 
+            {/* Action Button */}
+            <div className="mt-4">
+              <button
+                onClick={showFeedback ? handleNext : handleSubmit}
+                className="w-full bg-[var(--color-light-text)] text-white py-3 rounded-lg font-light tracking-wide hover:opacity-90 active:opacity-80 transition-opacity"
+              >
+                {showFeedback ? 'Next' : 'Submit'}
+              </button>
+            </div>
+
             {/* Help Text */}
             <div className="mt-3 text-center">
               {showFeedback ? (
                 <p className="text-xs text-[var(--color-light-text-subtle)]">
-                  Press <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">Enter</kbd> to continue
+                  Press <kbd>Enter</kbd> to continue
                 </p>
               ) : (
                 <p className="text-xs text-[var(--color-light-text-subtle)]">
-                  Press <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">Enter</kbd> to submit
+                  Press <kbd>Enter</kbd> to submit
                 </p>
               )}
             </div>
@@ -165,7 +182,7 @@ const Spelling = () => {
           {/* Zoom Tip */}
           <div className="mt-12 text-center">
             <p className="text-xs text-[var(--color-light-text-subtle)]">
-              拡大縮小: <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">+</kbd> / <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">-</kbd>
+              拡大縮小: <kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd>
             </p>
           </div>
         </div>

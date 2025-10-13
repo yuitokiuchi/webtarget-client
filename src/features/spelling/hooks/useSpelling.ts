@@ -111,20 +111,13 @@ export const useSpelling = () => {
    * Enterキーで送信または次へ
    */
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    console.log('handleKeyDown called:', {
-      key: e.key,
-      showFeedback,
-    });
-    
     if (e.key === 'Enter') {
       e.preventDefault();
       if (showFeedback) {
         // フィードバック表示中は次へ
-        console.log('Calling handleNext');
         handleNext();
       } else {
         // 通常時は回答送信
-        console.log('Calling handleSubmit');
         handleSubmit();
       }
     }
