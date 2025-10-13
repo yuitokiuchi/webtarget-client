@@ -139,14 +139,22 @@ const Spelling = () => {
               {/* Feedback Overlay */}
               {showFeedback && (
                 <div
-                  className="absolute inset-0 flex items-center justify-center rounded-lg backdrop-blur-sm bg-[var(--color-gray-300)] bg-opacity-30 border-2 border-[var(--color-light-text)]"
+                  className={`absolute inset-0 flex items-center justify-center rounded-lg backdrop-blur-sm ${
+                    isCorrectAnswer
+                      ? 'bg-[var(--color-success-500)] border-[var(--color-success-500)]'
+                      : 'bg-[var(--color-error-500)] border-[var(--color-error-500)]'
+                  } bg-opacity-20 border-2`}
                 >
                   <div className="text-center bg-white rounded-lg px-6 py-3 shadow-lg">
-                    <div className="text-4xl mb-1 text-[var(--color-light-text)]">
+                    <div className={`text-4xl mb-1 ${
+                      isCorrectAnswer
+                        ? 'text-[var(--color-success-500)]'
+                        : 'text-[var(--color-error-500)]'
+                    }`}>
                       {isCorrectAnswer ? '✓' : '✗'}
                     </div>
                     {!isCorrectAnswer && (
-                      <div className="text-base text-[var(--color-light-text)] font-medium">
+                      <div className="text-base text-[var(--color-error-500)] font-medium">
                         {currentWord.word}
                       </div>
                     )}
