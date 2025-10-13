@@ -1,12 +1,6 @@
 // src/lib/validation.ts
 
-/**
- * 単語範囲の定数
- */
-export const WORD_RANGE = {
-  MIN: 1,
-  MAX: 1900,
-} as const;
+import { WORD_RANGE } from '@/config/constants';
 
 /**
  * バリデーション結果

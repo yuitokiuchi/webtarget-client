@@ -1,12 +1,13 @@
 // src/lib/storage.ts
 
 import type { SpellingAnswer } from '@/types';
+import { SESSION_CONFIG } from '@/config/constants';
 
 /**
  * LocalStorageのキー定数
  */
 const STORAGE_KEYS = {
-  SPELLING_STATE: 'webtarget_spelling_state',
+  SPELLING_STATE: SESSION_CONFIG.STORAGE_KEY,
   SPELLING_CONFIG: 'webtarget_spelling_config',
   SPELLING_HISTORY: 'webtarget_spelling_history',
 } as const;
@@ -120,9 +121,8 @@ export const isSessionValid = (session: SpellingSession | null): boolean => {
   if (!session) return false;
   
   const now = Date.now();
-  const twentyFourHours = 24 * 60 * 60 * 1000;
   
-  return (now - session.lastUpdatedAt) < twentyFourHours;
+  return (now - session.lastUpdatedAt) < SESSION_CONFIG.VALIDITY_DURATION;
 };
 
 // ========== スペリング設定管理 ==========

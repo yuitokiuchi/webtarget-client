@@ -7,11 +7,14 @@
  * import { fetchWords, checkSpelling, calculateStats } from '@/lib';
  */
 
+// 定数（Single Source of Truth）
+export * from '@/config/constants';
+
 // 単語API
 export { fetchWords, checkSpelling, clearCache } from './wordsApi';
 
 // バリデーション
-export { validateWordRange, validateAnswer, sanitizeNumber, WORD_RANGE } from './validation';
+export { validateWordRange, validateAnswer, sanitizeNumber } from './validation';
 
 // スペリングユーティリティ
 export {

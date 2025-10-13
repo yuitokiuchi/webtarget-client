@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { loadWords, setConfig } from '@/features/spelling/spellingSlice';
 import { validateWordRange, sanitizeNumber, getWordCount } from '@/lib';
+import { DEFAULT_CONFIG, WORD_RANGE, UI_CONFIG } from '@/config/constants';
 
 const Home = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const [startRange, setStartRange] = useState<string>('1');
-  const [endRange, setEndRange] = useState<string>('100');
-  const [showImages, setShowImages] = useState<boolean>(true);
+  const [startRange, setStartRange] = useState<string>(String(DEFAULT_CONFIG.startRange));
+  const [endRange, setEndRange] = useState<string>(String(DEFAULT_CONFIG.endRange));
+  const [showImages, setShowImages] = useState<boolean>(DEFAULT_CONFIG.showImages);
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -19,8 +20,8 @@ const Home = () => {
     setError('');
 
     // 数値に変換
-    const start = sanitizeNumber(startRange, 1);
-    const end = sanitizeNumber(endRange, 100);
+    const start = sanitizeNumber(startRange, DEFAULT_CONFIG.startRange);
+    const end = sanitizeNumber(endRange, DEFAULT_CONFIG.endRange);
 
     // バリデーション
     const validation = validateWordRange(start, end);
@@ -58,11 +59,11 @@ const Home = () => {
       {/* Header */}
       <header className="mb-16 text-center">
         <h1 className="text-6xl font-light tracking-tight mb-6">
-          WebTarget
+          {UI_CONFIG.APP_NAME}
         </h1>
         <div className="w-12 h-px bg-[var(--color-light-border)] mx-auto mb-6" />
         <p className="text-sm text-[var(--color-light-text-subtle)] tracking-widest uppercase">
-          1900 Words Spelling
+          {UI_CONFIG.SUBTITLE}
         </p>
       </header>
 
@@ -78,8 +79,8 @@ const Home = () => {
             <div className="flex items-center gap-4">
               <input
                 type="number"
-                min="1"
-                max="1900"
+                min={WORD_RANGE.MIN}
+                max={WORD_RANGE.MAX}
                 value={startRange}
                 onChange={(e) => setStartRange(e.target.value)}
                 className="w-full bg-[var(--color-light-surface)] border border-[var(--color-light-border)] rounded-lg px-4 py-3 text-center text-lg font-light focus:outline-none focus:border-[var(--color-light-text-muted)] transition-colors"
@@ -88,8 +89,8 @@ const Home = () => {
               <span className="text-[var(--color-light-text-subtle)]">—</span>
               <input
                 type="number"
-                min="1"
-                max="1900"
+                min={WORD_RANGE.MIN}
+                max={WORD_RANGE.MAX}
                 value={endRange}
                 onChange={(e) => setEndRange(e.target.value)}
                 className="w-full bg-[var(--color-light-surface)] border border-[var(--color-light-border)] rounded-lg px-4 py-3 text-center text-lg font-light focus:outline-none focus:border-[var(--color-light-text-muted)] transition-colors"
@@ -143,7 +144,7 @@ const Home = () => {
 
       {/* Footer */}
       <footer className="absolute bottom-6 text-xs text-[var(--color-light-text-subtle)]">
-        2025 WebTarget
+        {UI_CONFIG.COPYRIGHT_YEAR} {UI_CONFIG.APP_NAME}
       </footer>
     </div>
   );

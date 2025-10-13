@@ -3,11 +3,10 @@
 import axios from 'axios';
 import type { Word } from '@/types';
 import { validateWordRange } from './validation';
-
-const API_BASE_URL = 'https://o3dehrjo4mwajqigkou2ii3fra0ycspw.lambda-url.ap-northeast-1.on.aws';
+import { API_CONFIG } from '@/config/constants';
 
 // シンプルなインメモリキャッシュ
-const wordsCache = new Map<string, Word[]>();
+const wordsCache = new Map<string, { data: Word[]; timestamp: number }>();
 
 /**
  * キャッシュキーの生成
@@ -32,13 +31,19 @@ export const fetchWords = async (start: number, end: number): Promise<Word[]> =>
   const cacheKey = getCacheKey(start, end);
   const cached = wordsCache.get(cacheKey);
   if (cached) {
-    return cached;
+    // キャッシュの有効期限チェック
+    const now = Date.now();
+    if (now - cached.timestamp < API_CONFIG.CACHE_DURATION) {
+      return cached.data;
+    }
+    // 期限切れの場合はキャッシュを削除
+    wordsCache.delete(cacheKey);
   }
   
   try {
-    const response = await axios.get<Word[]>(API_BASE_URL, {
+    const response = await axios.get<Word[]>(API_CONFIG.BASE_URL, {
       params: { start, end },
-      timeout: 10000, // 10秒タイムアウト
+      timeout: API_CONFIG.TIMEOUT,
     });
     
     // レスポンスの検証
@@ -46,8 +51,11 @@ export const fetchWords = async (start: number, end: number): Promise<Word[]> =>
       throw new Error('不正なレスポンス形式です');
     }
     
-    // キャッシュに保存
-    wordsCache.set(cacheKey, response.data);
+    // キャッシュに保存（タイムスタンプ付き）
+    wordsCache.set(cacheKey, {
+      data: response.data,
+      timestamp: Date.now(),
+    });
     
     return response.data;
   } catch (error) {

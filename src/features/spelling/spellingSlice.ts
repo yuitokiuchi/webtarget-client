@@ -4,6 +4,7 @@ import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/tool
 import type { SpellingState, SpellingAnswer } from '@/types';
 import { fetchWords, checkSpelling } from '@/lib/wordsApi';
 import { loadSpellingSession, isSessionValid } from '@/lib/storage';
+import { DEFAULT_CONFIG } from '@/config/constants';
 
 // セッションから復元を試みる
 const savedSession = loadSpellingSession();
@@ -15,9 +16,9 @@ const initialState: SpellingState = {
   answers: canRestoreSession && savedSession ? savedSession.answers : [],
   isLoading: false,
   error: null,
-  showImages: canRestoreSession && savedSession ? savedSession.showImages : true,
-  startRange: canRestoreSession && savedSession ? savedSession.startRange : 1,
-  endRange: canRestoreSession && savedSession ? savedSession.endRange : 100,
+  showImages: canRestoreSession && savedSession ? savedSession.showImages : DEFAULT_CONFIG.showImages,
+  startRange: canRestoreSession && savedSession ? savedSession.startRange : DEFAULT_CONFIG.startRange,
+  endRange: canRestoreSession && savedSession ? savedSession.endRange : DEFAULT_CONFIG.endRange,
 };
 
 /**
