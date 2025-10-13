@@ -10,6 +10,7 @@ const routes: Array<{
   loader: () => Promise<any>;
 }> = [
   { path: '/', loader: () => import('@/features/home/Home') },
+  { path: '/spelling', loader: () => import('@/features/spelling/Spelling') },
 ];
 
 // helper to convert dynamic import into a React.LazyExoticComponent

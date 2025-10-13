@@ -1,23 +1,67 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { loadWords, setConfig } from '@/features/spelling/spellingSlice';
+import { validateWordRange, sanitizeNumber, getWordCount } from '@/lib';
 
 const Home = () => {
-  const [startRange, setStartRange] = useState<number>(1);
-  const [endRange, setEndRange] = useState<number>(100);
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
-  const handleStart = () => {
-    // TODO: スペリング画面に遷移
-    console.log(`Starting spelling test: ${startRange} - ${endRange}`);
+  const [startRange, setStartRange] = useState<string>('1');
+  const [endRange, setEndRange] = useState<string>('100');
+  const [showImages, setShowImages] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleStart = async () => {
+    // エラーをクリア
+    setError('');
+
+    // 数値に変換
+    const start = sanitizeNumber(startRange, 1);
+    const end = sanitizeNumber(endRange, 100);
+
+    // バリデーション
+    const validation = validateWordRange(start, end);
+    if (!validation.isValid) {
+      setError(validation.error || '入力値が不正です');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // 設定を保存
+      dispatch(setConfig({ showImages, startRange: start, endRange: end }));
+
+      // 単語を取得
+      await dispatch(loadWords({ start, end })).unwrap();
+
+      // スペリング画面に遷移
+      navigate('/spelling');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '単語の取得に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGetWordCount = () => {
+    const start = sanitizeNumber(startRange, 0);
+    const end = sanitizeNumber(endRange, 0);
+    return getWordCount(start, end);
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-[var(--color-light-bg)] text-[var(--color-light-text)] flex flex-col items-center justify-center px-6">
       {/* Header */}
       <header className="mb-16 text-center">
         <h1 className="text-6xl font-light tracking-tight mb-6">
           WebTarget
         </h1>
-        <div className="w-12 h-px bg-white/30 mx-auto mb-6" />
-        <p className="text-sm text-white/50 tracking-widest uppercase">
+        <div className="w-12 h-px bg-[var(--color-light-border)] mx-auto mb-6" />
+        <p className="text-sm text-[var(--color-light-text-subtle)] tracking-widest uppercase">
           1900 Words Spelling
         </p>
       </header>
@@ -27,7 +71,7 @@ const Home = () => {
         <div className="space-y-8">
           {/* Range Selection */}
           <div className="space-y-4">
-            <h2 className="text-sm font-light text-white/70 tracking-wide">
+            <h2 className="text-sm font-light text-[var(--color-light-text-muted)] tracking-wide">
               Select Range
             </h2>
             
@@ -37,65 +81,68 @@ const Home = () => {
                 min="1"
                 max="1900"
                 value={startRange}
-                onChange={(e) => setStartRange(Number(e.target.value))}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-center text-lg font-light focus:outline-none focus:border-white/30 transition-colors"
+                onChange={(e) => setStartRange(e.target.value)}
+                className="w-full bg-[var(--color-light-surface)] border border-[var(--color-light-border)] rounded-lg px-4 py-3 text-center text-lg font-light focus:outline-none focus:border-[var(--color-light-text-muted)] transition-colors"
                 placeholder="Start"
               />
-              <span className="text-white/30">—</span>
+              <span className="text-[var(--color-light-text-subtle)]">—</span>
               <input
                 type="number"
                 min="1"
                 max="1900"
                 value={endRange}
-                onChange={(e) => setEndRange(Number(e.target.value))}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-center text-lg font-light focus:outline-none focus:border-white/30 transition-colors"
+                onChange={(e) => setEndRange(e.target.value)}
+                className="w-full bg-[var(--color-light-surface)] border border-[var(--color-light-border)] rounded-lg px-4 py-3 text-center text-lg font-light focus:outline-none focus:border-[var(--color-light-text-muted)] transition-colors"
                 placeholder="End"
               />
             </div>
 
-            <p className="text-xs text-white/40 text-center">
-              {endRange - startRange + 1} words selected
+            <p className="text-xs text-[var(--color-light-text-subtle)] text-center">
+              {handleGetWordCount()} words selected
             </p>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-[var(--color-error-100)] border border-[var(--color-error-500)] rounded-lg px-4 py-3 text-sm text-[var(--color-error-500)]">
+              {error}
+            </div>
+          )}
+
+          {/* Image Display Setting */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-light text-[var(--color-light-text-muted)] tracking-wide">
+              Settings
+            </h2>
+            
+            <label className="flex items-center justify-between bg-[var(--color-light-surface)] border border-[var(--color-light-border)] rounded-lg px-4 py-3 cursor-pointer hover:bg-[var(--color-gray-100)] transition-colors">
+              <span className="text-sm font-light">Show Images</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={showImages}
+                  onChange={(e) => setShowImages(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-[var(--color-light-border)] rounded-full peer-checked:bg-[var(--color-light-text)] transition-colors" />
+                <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-5 transition-transform shadow-sm" />
+              </div>
+            </label>
           </div>
 
           {/* Start Button */}
           <button
             onClick={handleStart}
-            className="w-full bg-white text-black py-4 rounded-lg font-light tracking-wide hover:bg-white/90 active:bg-white/80 transition-colors"
+            disabled={isLoading}
+            className="w-full bg-[var(--color-light-text)] text-white py-4 rounded-lg font-light tracking-wide hover:opacity-90 active:opacity-80 transition-opacity shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Start Spelling
+            {isLoading ? 'Loading...' : 'Start Spelling'}
           </button>
-
-          {/* Quick Select */}
-          <div className="space-y-3">
-            <p className="text-xs text-white/50 tracking-wide">Quick Select</p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: '1-100', start: 1, end: 100 },
-                { label: '101-500', start: 101, end: 500 },
-                { label: '501-1000', start: 501, end: 1000 },
-                { label: '1001-1500', start: 1001, end: 1500 },
-                { label: '1501-1900', start: 1501, end: 1900 },
-                { label: 'All', start: 1, end: 1900 },
-              ].map((preset) => (
-                <button
-                  key={preset.label}
-                  onClick={() => {
-                    setStartRange(preset.start);
-                    setEndRange(preset.end);
-                  }}
-                  className="bg-white/5 border border-white/10 py-2 rounded text-xs font-light hover:bg-white/10 hover:border-white/20 transition-colors"
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="absolute bottom-6 text-xs text-white/30">
+      <footer className="absolute bottom-6 text-xs text-[var(--color-light-text-subtle)]">
         © 2025 WebTarget
       </footer>
     </div>

@@ -1,0 +1,148 @@
+// src/features/spelling/spellingSlice.ts
+
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import type { SpellingState, SpellingAnswer } from '@/types';
+import { fetchWords, checkSpelling } from '@/lib/wordsApi';
+import { loadSpellingSession, isSessionValid } from '@/lib/storage';
+
+// セッションから復元を試みる
+const savedSession = loadSpellingSession();
+const canRestoreSession = isSessionValid(savedSession);
+
+const initialState: SpellingState = {
+  words: [],
+  currentIndex: canRestoreSession && savedSession ? savedSession.currentIndex : 0,
+  answers: canRestoreSession && savedSession ? savedSession.answers : [],
+  isLoading: false,
+  error: null,
+  showImages: canRestoreSession && savedSession ? savedSession.showImages : true,
+  startRange: canRestoreSession && savedSession ? savedSession.startRange : 1,
+  endRange: canRestoreSession && savedSession ? savedSession.endRange : 100,
+};
+
+/**
+ * 単語リストを取得する非同期アクション
+ */
+export const loadWords = createAsyncThunk(
+  'spelling/loadWords',
+  async ({ start, end }: { start: number; end: number }) => {
+    const words = await fetchWords(start, end);
+    return words;
+  }
+);
+
+const spellingSlice = createSlice({
+  name: 'spelling',
+  initialState,
+  reducers: {
+    /**
+     * 設定を更新
+     */
+    setConfig: (
+      state,
+      action: PayloadAction<{ showImages: boolean; startRange: number; endRange: number }>
+    ) => {
+      state.showImages = action.payload.showImages;
+      state.startRange = action.payload.startRange;
+      state.endRange = action.payload.endRange;
+    },
+
+    /**
+     * 回答を送信
+     */
+    submitAnswer: (state, action: PayloadAction<string>) => {
+      const currentWord = state.words[state.currentIndex];
+      if (!currentWord) return;
+
+      const isCorrect = checkSpelling(action.payload, currentWord.word);
+      const answer: SpellingAnswer = {
+        wordId: currentWord.id,
+        userAnswer: action.payload,
+        isCorrect,
+        correctWord: currentWord.word,
+      };
+
+      state.answers.push(answer);
+    },
+
+    /**
+     * 次の単語に進む
+     */
+    nextWord: (state) => {
+      if (state.currentIndex < state.words.length - 1) {
+        state.currentIndex += 1;
+      }
+    },
+
+    /**
+     * 前の単語に戻る
+     */
+    previousWord: (state) => {
+      if (state.currentIndex > 0) {
+        state.currentIndex -= 1;
+      }
+    },
+
+    /**
+     * 特定の単語にジャンプ
+     */
+    goToWord: (state, action: PayloadAction<number>) => {
+      const index = action.payload;
+      if (index >= 0 && index < state.words.length) {
+        state.currentIndex = index;
+      }
+    },
+
+    /**
+     * スペリングをリセット
+     */
+    resetSpelling: (state) => {
+      state.currentIndex = 0;
+      state.answers = [];
+      state.error = null;
+    },
+
+    /**
+     * すべてをリセット
+     */
+    resetAll: () => initialState,
+
+    /**
+     * セッションから復元
+     */
+    restoreSession: (state, action: PayloadAction<{ currentIndex: number; answers: SpellingAnswer[] }>) => {
+      state.currentIndex = action.payload.currentIndex;
+      state.answers = action.payload.answers;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadWords.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(loadWords.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.words = action.payload;
+        state.currentIndex = 0;
+        state.answers = [];
+      })
+      .addCase(loadWords.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || '単語の読み込みに失敗しました';
+      });
+  },
+});
+
+export const {
+  setConfig,
+  submitAnswer,
+  nextWord,
+  previousWord,
+  goToWord,
+  resetSpelling,
+  resetAll,
+  restoreSession,
+} = spellingSlice.actions;
+
+export default spellingSlice.reducer;
