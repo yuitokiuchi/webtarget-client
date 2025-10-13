@@ -21,12 +21,18 @@ const Spelling = () => {
     handleInputChange,
   } = useSpelling();
 
-  // 単語がない場合はホームに戻る
+  console.log('=== Spelling Component ===');
+  console.log('words.length:', words.length);
+  console.log('isReviewMode:', isReviewMode);
+
+  // 単語がない場合はホームに戻る（復習モードを除く）
   useEffect(() => {
-    if (words.length === 0) {
+    console.log('useEffect [words.length, isReviewMode]:', { wordsLength: words.length, isReviewMode });
+    if (words.length === 0 && !isReviewMode) {
+      console.log('Navigating to home because words.length === 0 and not review mode');
       navigate('/');
     }
-  }, [words.length, navigate]);
+  }, [words.length, navigate, isReviewMode]);
 
   // すべて正解したら結果画面へ
   useEffect(() => {
@@ -55,7 +61,7 @@ const Spelling = () => {
         {isReviewMode && (
           <div className="mb-4 text-center">
             <span className="inline-block px-4 py-2 bg-[var(--color-error-100)] text-[var(--color-error-500)] rounded-full text-sm font-medium">
-              📝 Review Mode
+              Review Mode
             </span>
           </div>
         )}

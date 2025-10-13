@@ -1,7 +1,9 @@
 // src/features/result/Result.tsx
 
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import { useResult } from './hooks/useResult';
 import { resetAll, startReviewMode } from '@/features/spelling/spellingSlice';
 import { type WordMistakeStats } from '@/lib/resultUtils';
@@ -10,10 +12,23 @@ const Result = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { incorrectWords, stats, hasData } = useResult();
+  const { isReviewMode } = useAppSelector(state => state.spelling);
 
-  // データがない場合はホームに戻る
-  if (!hasData) {
-    navigate('/');
+  // データがない場合はホームに戻る（復習モード開始時を除く）
+  useEffect(() => {
+    if (!hasData && !isReviewMode) {
+      navigate('/');
+    }
+  }, [hasData, isReviewMode, navigate]);
+
+  // 復習モードが開始されたらスペリング画面に遷移
+  useEffect(() => {
+    if (isReviewMode) {
+      navigate('/spelling');
+    }
+  }, [isReviewMode, navigate]);
+
+  if (!hasData && !isReviewMode) {
     return null;
   }
 
@@ -31,16 +46,18 @@ const Result = () => {
 
   // 間違えた問題だけ復習
   const handleReview = () => {
+    console.log('=== handleReview called ===');
+    console.log('incorrectWords.length:', incorrectWords.length);
+    
     if (incorrectWords.length === 0) return;
 
     // 間違えた単語のリストを抽出
     const incorrectWordList = incorrectWords.map(stat => stat.word);
+    console.log('incorrectWordList:', incorrectWordList);
 
-    // 復習モードを開始
+    // 復習モードを開始（useEffectで遷移する）
     dispatch(startReviewMode({ incorrectWords: incorrectWordList }));
-
-    // スペリング画面に遷移
-    navigate('/spelling');
+    console.log('startReviewMode dispatched');
   };
 
   return (

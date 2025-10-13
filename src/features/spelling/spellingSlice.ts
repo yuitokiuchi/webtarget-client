@@ -115,17 +115,37 @@ const spellingSlice = createSlice({
     /**
      * すべてをリセット
      */
-    resetAll: () => initialState,
+    resetAll: (state) => {
+      // initialStateに戻すが、復習モードはリセット
+      Object.assign(state, {
+        ...initialState,
+        isReviewMode: false,
+      });
+    },
 
     /**
      * 間違えた単語で復習モードを開始
      */
     startReviewMode: (state, action: PayloadAction<{ incorrectWords: any[] }>) => {
+      console.log('=== startReviewMode reducer ===');
+      console.log('incorrectWords received:', action.payload.incorrectWords);
+      console.log('incorrectWords length:', action.payload.incorrectWords.length);
+      
       state.words = action.payload.incorrectWords;
       state.currentIndex = 0;
       state.answers = [];
       state.isReviewMode = true;
       state.error = null;
+      
+      console.log('state.words after assignment:', state.words);
+      console.log('state.isReviewMode:', state.isReviewMode);
+    },
+
+    /**
+     * 復習モードを終了
+     */
+    endReviewMode: (state) => {
+      state.isReviewMode = false;
     },
 
     /**
@@ -165,6 +185,7 @@ export const {
   resetSpelling,
   resetAll,
   startReviewMode,
+  endReviewMode,
   restoreSession,
 } = spellingSlice.actions;
 
