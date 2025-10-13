@@ -19,6 +19,7 @@ const initialState: SpellingState = {
   showImages: canRestoreSession && savedSession ? savedSession.showImages : DEFAULT_CONFIG.showImages,
   startRange: canRestoreSession && savedSession ? savedSession.startRange : DEFAULT_CONFIG.startRange,
   endRange: canRestoreSession && savedSession ? savedSession.endRange : DEFAULT_CONFIG.endRange,
+  isReviewMode: false,
 };
 
 /**
@@ -55,6 +56,12 @@ const spellingSlice = createSlice({
       const currentWord = state.words[state.currentIndex];
       if (!currentWord) return;
 
+      console.log('submitAnswer called:', {
+        userAnswer: action.payload,
+        currentWord: currentWord.word,
+        currentAnswersLength: state.answers.length,
+      });
+
       const isCorrect = checkSpelling(action.payload, currentWord.word);
       const answer: SpellingAnswer = {
         wordId: currentWord.id,
@@ -64,6 +71,8 @@ const spellingSlice = createSlice({
       };
 
       state.answers.push(answer);
+      
+      console.log('Answer added. Total answers now:', state.answers.length);
     },
 
     /**
@@ -109,6 +118,17 @@ const spellingSlice = createSlice({
     resetAll: () => initialState,
 
     /**
+     * 間違えた単語で復習モードを開始
+     */
+    startReviewMode: (state, action: PayloadAction<{ incorrectWords: any[] }>) => {
+      state.words = action.payload.incorrectWords;
+      state.currentIndex = 0;
+      state.answers = [];
+      state.isReviewMode = true;
+      state.error = null;
+    },
+
+    /**
      * セッションから復元
      */
     restoreSession: (state, action: PayloadAction<{ currentIndex: number; answers: SpellingAnswer[] }>) => {
@@ -144,6 +164,7 @@ export const {
   goToWord,
   resetSpelling,
   resetAll,
+  startReviewMode,
   restoreSession,
 } = spellingSlice.actions;
 

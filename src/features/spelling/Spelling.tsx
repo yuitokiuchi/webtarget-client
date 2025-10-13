@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import { useSpelling } from './hooks/useSpelling';
 import { calculateStats } from '@/lib';
 
 const Spelling = () => {
   const navigate = useNavigate();
+  const { isReviewMode } = useAppSelector(state => state.spelling);
   const {
     currentWord,
     userInput,
@@ -26,12 +28,10 @@ const Spelling = () => {
     }
   }, [words.length, navigate]);
 
-  // すべて正解したら結果画面へ（今は実装していないのでログのみ）
+  // すべて正解したら結果画面へ
   useEffect(() => {
     if (allCorrect && words.length > 0) {
-      console.log('🎉 All correct!');
-      // TODO: 結果画面に遷移
-      // navigate('/result');
+      navigate('/result');
     }
   }, [allCorrect, words.length, navigate]);
 
@@ -51,6 +51,15 @@ const Spelling = () => {
   return (
     <div className="min-h-screen bg-[var(--color-light-bg)] text-[var(--color-light-text)] px-6 py-8">
       <div className="w-full max-w-2xl mx-auto">
+        {/* Review Mode Badge */}
+        {isReviewMode && (
+          <div className="mb-4 text-center">
+            <span className="inline-block px-4 py-2 bg-[var(--color-error-100)] text-[var(--color-error-500)] rounded-full text-sm font-medium">
+              📝 Review Mode
+            </span>
+          </div>
+        )}
+
         {/* Stats Header */}
         <div className="flex items-center justify-between mb-6 text-sm text-[var(--color-light-text-muted)]">
           <div className="flex items-center gap-6">
@@ -73,7 +82,6 @@ const Spelling = () => {
         {/* Word Card */}
         <div 
           className="bg-[var(--color-light-surface)] border border-[var(--color-light-border)] rounded-xl p-8 shadow-sm"
-          onKeyDown={handleKeyDown}
           tabIndex={-1}
         >
           {/* Japanese Meaning & Part of Speech */}

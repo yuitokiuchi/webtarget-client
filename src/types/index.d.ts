@@ -25,4 +25,5 @@ export interface SpellingState {
   showImages: boolean;
   startRange: number;
   endRange: number;
+  isReviewMode: boolean; // 復習モードかどうか
 }

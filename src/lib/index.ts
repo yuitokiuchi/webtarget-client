@@ -50,7 +50,17 @@ export {
 // ストレージミドルウェア
 export { createStorageMiddleware } from './storageMiddleware';
 
+// 結果ユーティリティ
+export {
+  getMistakeStatsByWord,
+  getIncorrectWordStats,
+  getCorrectWordStats,
+  calculateResultStats,
+  formatDuration,
+} from './resultUtils';
+
 export type { SpellingStats } from './spellingUtils';
 export type { ValidationResult } from './validation';
+export type { WordMistakeStats, ResultStats } from './resultUtils';
 export type { SpellingSession, SpellingConfig, SpellingHistoryEntry } from './storage';
 

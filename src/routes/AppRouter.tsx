@@ -11,6 +11,7 @@ const routes: Array<{
 }> = [
   { path: '/', loader: () => import('@/features/home/Home') },
   { path: '/spelling', loader: () => import('@/features/spelling/Spelling') },
+  { path: '/result', loader: () => import('@/features/result/Result') },
 ];
 
 // helper to convert dynamic import into a React.LazyExoticComponent
