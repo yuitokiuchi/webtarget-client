@@ -1,58 +1,32 @@
 # WebTarget
 
-A minimalist English spelling application for mastering 1900 essential words.
+English spelling practice application.
+
+**Live:** [webtarget.dev](https://webtarget.dev)
 
 ## Features
 
-- **1900 Words** - Comprehensive vocabulary coverage
-- **Smart Review** - Focus on incorrect words
-- **Progress Tracking** - Real-time statistics
-- **Keyboard-Only** - Efficient workflow (Enter to submit/continue)
+- 1900 English words
+- Review mode for incorrect words
+- Keyboard-only operation
+- Session persistence (24h)
 
-## Quick Start
+## Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
-
-# Build for production
-npm run build
 ```
 
 ## Usage
 
-1. **Select Range** - Choose word range (1-1900)
-2. **Type & Submit** - Enter spelling, press Enter
-3. **Review Results** - View statistics and retry incorrect words
-4. **Repeat** - Practice until perfect
+1. Select word range (1-1900)
+2. Type spelling, press Enter
+3. Review results
+4. Retry incorrect words
 
 ## Tech Stack
 
-- React 19
-- TypeScript
-- Vite 7
-- Tailwind CSS v4
-- Redux Toolkit
-- React Router v7
-
-## Architecture
-
-```
-src/
-├── features/      # Feature modules (home, spelling, result)
-├── lib/          # Utilities (API, validation, storage)
-├── config/       # Single source of truth for constants
-└── routes/       # Lazy-loaded routing
-```
-
-## Design Principles
-
-- **Single Source of Truth** - Centralized configuration
-- **UI/Logic Separation** - Custom hooks for business logic
-- **Simplicity First** - Clean, minimal interface
-- **Keyboard Focused** - Efficient interaction
+React 19 · TypeScript · Vite 7 · Tailwind CSS v4 · Redux Toolkit · React Router v7
 
 ---
