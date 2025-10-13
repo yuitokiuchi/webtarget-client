@@ -161,6 +161,13 @@ const Spelling = () => {
               )}
             </div>
           </div>
+
+          {/* Zoom Tip */}
+          <div className="mt-12 text-center">
+            <p className="text-xs text-[var(--color-light-text-subtle)]">
+              拡大縮小: <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">+</kbd> / <kbd className="px-1.5 py-0.5 bg-[var(--color-gray-200)] text-[var(--color-light-text)] rounded text-xs font-mono">-</kbd>
+            </p>
+          </div>
         </div>
       </div>
     </div>
