@@ -14,12 +14,20 @@ export interface SpellingStats {
 
 /**
  * 回答履歴から統計を計算
+ * 各単語の最新の回答のみをカウント（同じ単語への複数回答は最新のみ）
  * @param answers 回答の配列
+ * @param words 全単語リスト
  * @returns 統計情報
  */
-export const calculateStats = (answers: SpellingAnswer[]): SpellingStats => {
-  const total = answers.length;
-  const correct = answers.filter(a => a.isCorrect).length;
+export const calculateStats = (answers: SpellingAnswer[], words: Word[]): SpellingStats => {
+  // 各単語の最新の回答状況をマップ化
+  const answerMap = getLatestAnswerMap(answers);
+
+  // 最新の回答で正解した単語の数をカウント
+  const correct = Array.from(answerMap.values()).filter(a => a.isCorrect).length;
+  
+  // 総数は全単語数
+  const total = words.length;
   const incorrect = total - correct;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
 

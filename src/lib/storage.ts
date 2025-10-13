@@ -145,8 +145,8 @@ export const loadSpellingConfig = (): SpellingConfig | null => {
  * デフォルト設定を取得
  */
 export const getDefaultConfig = (): SpellingConfig => ({
-  defaultStartRange: 1,
-  defaultEndRange: 100,
+  defaultStartRange: 1441,
+  defaultEndRange: 1521,
   defaultShowImages: true,
 });
 

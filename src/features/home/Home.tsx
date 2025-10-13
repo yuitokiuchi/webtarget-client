@@ -143,7 +143,7 @@ const Home = () => {
 
       {/* Footer */}
       <footer className="absolute bottom-6 text-xs text-[var(--color-light-text-subtle)]">
-        © 2025 WebTarget
+        2025 WebTarget
       </footer>
     </div>
   );

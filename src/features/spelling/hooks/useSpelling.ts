@@ -103,7 +103,7 @@ export const useSpelling = () => {
   /**
    * Enterキーで送信または次へ
    */
-  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (showFeedback) {
@@ -131,6 +131,19 @@ export const useSpelling = () => {
     setUserInput('');
   }, [currentIndex]);
 
+  // フィードバック状態が変わったら、フィードバックが消えた時にフォーカスを戻す
+  useEffect(() => {
+    if (!showFeedback) {
+      // 少し遅延させてフォーカスを設定
+      setTimeout(() => {
+        const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+        if (input) {
+          input.focus();
+        }
+      }, 50);
+    }
+  }, [showFeedback]);
+
   return {
     // 状態
     currentWord,
@@ -152,7 +165,7 @@ export const useSpelling = () => {
     handleNext,
     handleGoToWord,
     handleReset,
-    handleKeyPress,
+    handleKeyDown,
     handleInputChange,
     setUserInput,
   };

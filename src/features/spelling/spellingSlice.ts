@@ -124,7 +124,8 @@ const spellingSlice = createSlice({
       .addCase(loadWords.fulfilled, (state, action) => {
         state.isLoading = false;
         state.words = action.payload;
-        state.currentIndex = 0;
+        // 初回はランダムな位置から開始
+        state.currentIndex = Math.floor(Math.random() * action.payload.length);
         state.answers = [];
       })
       .addCase(loadWords.rejected, (state, action) => {
