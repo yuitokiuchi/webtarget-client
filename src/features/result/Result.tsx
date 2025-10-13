@@ -1,6 +1,6 @@
 // src/features/result/Result.tsx
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
@@ -13,6 +13,7 @@ const Result = () => {
   const dispatch = useAppDispatch();
   const { incorrectWords, stats, hasData } = useResult();
   const { isReviewMode } = useAppSelector(state => state.spelling);
+  const prevReviewModeRef = useRef(isReviewMode);
 
   // データがない場合はホームに戻る（復習モード開始時を除く）
   useEffect(() => {
@@ -21,11 +22,12 @@ const Result = () => {
     }
   }, [hasData, isReviewMode, navigate]);
 
-  // 復習モードが開始されたらスペリング画面に遷移
+  // 復習モードが開始されたらスペリング画面に遷移（false → true の変化のみ）
   useEffect(() => {
-    if (isReviewMode) {
+    if (!prevReviewModeRef.current && isReviewMode) {
       navigate('/spelling');
     }
+    prevReviewModeRef.current = isReviewMode;
   }, [isReviewMode, navigate]);
 
   if (!hasData && !isReviewMode) {

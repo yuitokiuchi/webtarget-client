@@ -3,11 +3,14 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useSpelling } from './hooks/useSpelling';
 import { calculateStats } from '@/lib';
+import { endReviewMode } from '@/features/spelling/spellingSlice';
 
 const Spelling = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { isReviewMode } = useAppSelector(state => state.spelling);
   const {
     currentWord,
@@ -37,9 +40,13 @@ const Spelling = () => {
   // すべて正解したら結果画面へ
   useEffect(() => {
     if (allCorrect && words.length > 0) {
+      // 復習モードを終了してから結果画面へ
+      if (isReviewMode) {
+        dispatch(endReviewMode());
+      }
       navigate('/result');
     }
-  }, [allCorrect, words.length, navigate]);
+  }, [allCorrect, words.length, isReviewMode, dispatch, navigate]);
 
   if (!currentWord) {
     return (
