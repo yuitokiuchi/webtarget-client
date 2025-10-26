@@ -20,9 +20,9 @@ export const WORD_RANGE = {
  */
 export const DEFAULT_CONFIG = {
   /** デフォルトの開始範囲 */
-  startRange: 1441,
+  startRange: 1521,
   /** デフォルトの終了範囲 */
-  endRange: 1520,
+  endRange: 1600,
   /** 画像表示のデフォルト */
   showImages: true,
 } as const;
